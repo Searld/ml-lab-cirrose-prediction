@@ -35,7 +35,6 @@ class My_Classifier_Model:
             for col in self.categorical_cols:
                 df[col] = df[col].fillna(stats['categorical'][col])
         
-        # Feature Engineering как в твоем новом коде
         df["Age_years"] = df["Age"] / 365
         df["Bilirubin_Albumin"] = df["Bilirubin"] / (df["Albumin"] + 1e-5)
         for col in ["Bilirubin", "Alk_Phos", "SGOT"]:
@@ -53,7 +52,6 @@ class My_Classifier_Model:
         try:
             train_df = pd.read_csv(dataset)
             
-            # Считаем статистики для продакшена
             stats = {
                 'numeric': train_df[self.numeric_cols].median().to_dict(),
                 'categorical': {col: train_df[col].mode()[0] for col in self.categorical_cols}
