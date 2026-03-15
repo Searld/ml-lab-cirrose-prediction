@@ -4,13 +4,12 @@ import pandas as pd
 import numpy as np
 import joblib
 import fire
-import optuna
 from catboost import CatBoostClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import log_loss
 from clearml import Task
 
-# --- Настройка логирования (Требование задания) ---
+# Настройка логирования
 os.makedirs('./data', exist_ok=True)
 logging.basicConfig(
     filename='./data/log_file.log',
@@ -22,109 +21,113 @@ logger = logging.getLogger(__name__)
 class My_Classifier_Model:
     def __init__(self):
         self.categorical_cols = ['Drug', 'Sex', 'Ascites', 'Hepatomegaly', 'Spiders', 'Edema']
-        self.numeric_cols = ['N_Days', 'Age', 'Bilirubin', 'Cholesterol', 'Albumin', 'Copper', 
+        self.numeric_cols = ['N_Days', 'Age', 'Bilirubin', 'Cholesterol', 'Albumin', 'Copper',
                              'Alk_Phos', 'SGOT', 'Tryglicerides', 'Platelets', 'Prothrombin', 'Stage']
 
-    def _preprocess(self, df, is_train=True):
-        """Внутренний метод для обработки данных"""
+    def _get_features(self, df, stats=None):
+        """Метод для создания признаков (Feature Engineering)"""
         df = df.copy()
         
-        # Обработка числовых признаков
-        for col in self.numeric_cols:
-            if col in df.columns:
-                val = df[col].median()
-                df[col] = df[col].fillna(val)
-                df[f'{col}_missing'] = df[col].isnull().astype(int)
-
-        # Обработка категориальных признаков
-        for col in self.categorical_cols:
-            if col in df.columns:
-                mode_val = df[col].mode()[0]
-                df[col] = df[col].fillna(mode_val).astype(str)
+        # Заполнение пропусков
+        if stats:
+            for col in self.numeric_cols:
+                df[col] = df[col].fillna(stats['numeric'][col])
+            for col in self.categorical_cols:
+                df[col] = df[col].fillna(stats['categorical'][col])
         
+        # Feature Engineering как в твоем новом коде
+        df["Age_years"] = df["Age"] / 365
+        df["Bilirubin_Albumin"] = df["Bilirubin"] / (df["Albumin"] + 1e-5)
+        for col in ["Bilirubin", "Alk_Phos", "SGOT"]:
+            df[f"log_{col}"] = np.log1p(df[col])
+            
+        for col in self.categorical_cols:
+            df[col] = df[col].astype(str)
+            
         return df
 
     def train(self, dataset: str):
-        """Метод обучения с использованием Optuna и ClearML"""
-        task = Task.init(project_name='Cirrhosis_Prediction', task_name='Optuna_CatBoost_Training')
+        task = Task.init(project_name='Cirrhosis_Prediction', task_name='KFold_CatBoost_Training')
         task.upload_artifact('train_dataset', artifact_object=dataset)
         
         try:
-            logger.info(f"Загрузка данных для обучения: {dataset}")
             train_df = pd.read_csv(dataset)
             
-            processed_df = self._preprocess(train_df)
-            X = processed_df.drop(['id', 'Status'], axis=1)
-            y = processed_df['Status']
+            # Считаем статистики для продакшена
+            stats = {
+                'numeric': train_df[self.numeric_cols].median().to_dict(),
+                'categorical': {col: train_df[col].mode()[0] for col in self.categorical_cols}
+            }
             
-            cat_features = [X.columns.get_loc(col) for col in self.categorical_cols if col in X.columns]
-            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-            logger.info("Запуск Optuna...")
-            def objective(trial):
-                params = {
-                    'iterations': trial.suggest_int('iterations', 500, 1000),
-                    'depth': trial.suggest_int('depth', 4, 8),
-                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1, log=True),
-                    'l2_leaf_reg': trial.suggest_float('l2_leaf_reg', 1, 10),
-                }
-                model = CatBoostClassifier(**params, loss_function='MultiClass', random_seed=42, verbose=0)
-                model.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_val, y_val), early_stopping_rounds=50)
-                return log_loss(y_val, model.predict_proba(X_val))
-
-            study = optuna.create_study(direction='minimize')
-            study.optimize(objective, n_trials=15)
+            X_full = self._get_features(train_df, stats)
+            y = X_full["Status"]
+            X = X_full.drop(["id", "Status"], axis=1)
             
-            logger.info(f"Лучшие параметры: {study.best_params}")
+            cat_features = [X.columns.get_loc(col) for col in self.categorical_cols]
+            
+            # Кросс-валидация
+            skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            oof = np.zeros((len(X), 3))
+            
+            logger.info("Начало кросс-валидации (5 фолдов)...")
+            
+            for fold, (train_idx, val_idx) in enumerate(skf.split(X, y)):
+                X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
+                y_tr, y_val = y.iloc[train_idx], y.iloc[val_idx]
+                
+                model = CatBoostClassifier(
+                    iterations=2000, learning_rate=0.03, depth=6,
+                    loss_function="MultiClass", eval_metric="MultiClass",
+                    random_seed=42, early_stopping_rounds=200, verbose=0
+                )
+                
+                model.fit(X_tr, y_tr, cat_features=cat_features, eval_set=(X_val, y_val))
+                oof[val_idx] = model.predict_proba(X_val)
+                logger.info(f"Fold {fold+1} завершен.")
 
-            final_model = CatBoostClassifier(**study.best_params, loss_function='MultiClass', random_seed=42, verbose=100)
+            cv_score = log_loss(y, oof)
+            print(f"🔥 FINAL CV LOGLOSS: {cv_score:.4f}")
+            
+            # Обучаем финальную модель на всех данных
+            final_model = CatBoostClassifier(
+                iterations=2000, learning_rate=0.03, depth=6,
+                loss_function="MultiClass", random_seed=42, verbose=100
+            )
             final_model.fit(X, y, cat_features=cat_features)
 
-            # Сохранение артефактов
+            # Сохранение всего необходимого
             os.makedirs('./model', exist_ok=True)
-            model_path = os.path.abspath('./model/best_model.bin')
-            final_model.save_model(model_path)
+            final_model.save_model('./model/best_model.bin')
+            joblib.dump({'stats': stats, 'columns': X.columns.tolist(), 'classes': final_model.classes_.tolist()}, './model/metadata.pkl')
             
-            # ВАЖНО: Сохраняем список колонок (этого не хватало!)
-            joblib.dump(X.columns.tolist(), './model/features.pkl')
-            
-            logger.info(f"Модель и признаки сохранены.")
-            print(f"✅ Обучение завершено. Log Loss: {study.best_value:.4f}")
+            task.get_logger().report_single_value(name='Final CV LogLoss', value=cv_score)
+            print("✅ Модель обучена и сохранена.")
 
         except Exception as e:
-            logger.error(f"Ошибка при обучении: {e}")
+            logger.error(f"Ошибка: {e}")
             raise
 
     def predict(self, dataset: str):
-        """Метод предсказания"""
         try:
-            logger.info(f"Запуск предсказания для: {dataset}")
-            
-            if not os.path.exists('./model/best_model.bin'):
-                raise FileNotFoundError("Файл модели ./model/best_model.bin не найден!")
-
+            # Загрузка метаданных
+            meta = joblib.load('./model/metadata.pkl')
             model = CatBoostClassifier()
             model.load_model('./model/best_model.bin')
-            feature_cols = joblib.load('./model/features.pkl')
             
             test_df = pd.read_csv(dataset)
-            ids = test_df['id']
+            processed_test = self._get_features(test_df, meta['stats'])
+            X_test = processed_test.reindex(columns=meta['columns'], fill_value=0)
             
-            processed_test = self._preprocess(test_df, is_train=False)
-            X_test = processed_test.reindex(columns=feature_cols, fill_value=0)
+            preds = model.predict_proba(X_test)
             
-            predictions = model.predict_proba(X_test)
-            
-            submission = pd.DataFrame(predictions, columns=[f'Status_{c}' for c in model.classes_])
-            submission.insert(0, 'id', ids)
+            submission = pd.DataFrame(preds, columns=[f'Status_{c}' for c in meta['classes']])
+            submission.insert(0, 'id', test_df['id'])
             
             submission.to_csv('./data/results.csv', index=False)
-            
-            logger.info("Предсказания сохранены в ./data/results.csv")
-            print("✅ Файл результатов создан.")
+            print("✅ Предсказания сохранены в ./data/results.csv")
 
         except Exception as e:
-            logger.error(f"Ошибка при предсказании: {e}")
+            logger.error(f"Ошибка предсказания: {e}")
             raise
 
 if __name__ == '__main__':
