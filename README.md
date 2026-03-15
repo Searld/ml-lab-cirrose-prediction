@@ -18,6 +18,6 @@
 
 ### Установка:
 ```bash
-pip install dist/название_твоего_файла.whl
+pip install dist/cirrhosis_prediction-0.1.0-py3-none-any.whl
 # или через poetry
 poetry install
