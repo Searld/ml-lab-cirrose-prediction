@@ -1,0 +1,34 @@
+2026-03-07 00:06:01,207 - INFO - Начало обучения. Файл: data/train.csv
+2026-03-07 00:06:01,209 - ERROR - Ошибка при обучении: [Errno 2] No such file or directory: 'data/train.csv'
+2026-03-07 00:06:58,971 - INFO - Начало обучения. Файл: data/train.csv
+2026-03-07 00:07:02,327 - INFO - Модель успешно обучена и сохранена в ./model/model.pkl
+2026-03-07 00:07:24,529 - INFO - Начало предсказания. Файл: data/test.csv
+2026-03-07 00:07:25,118 - INFO - Предсказания сохранены в ./data/results.csv
+2026-03-09 18:21:29,888 - INFO - Начало предсказания. Файл: data/test.csv
+2026-03-09 18:21:30,408 - INFO - Предсказания сохранены в ./data/results.csv
+2026-03-15 19:02:48,326 - INFO - Загрузка данных для обучения: data/train.csv
+2026-03-15 19:02:48,458 - INFO - Запуск Optuna для подбора параметров...
+2026-03-15 19:09:32,572 - WARNING - Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:10:00,055 - WARNING - Retrying (Retry(total=236, connect=240, read=236, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:10:35,395 - WARNING - Retrying (Retry(total=235, connect=240, read=235, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:11:26,890 - WARNING - Retrying (Retry(total=234, connect=240, read=234, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:12:50,439 - WARNING - Retrying (Retry(total=233, connect=240, read=233, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:13:00,844 - INFO - Лучшие параметры: {'iterations': 818, 'depth': 4, 'learning_rate': 0.0979013672904112, 'l2_leaf_reg': 9.585285821002302}
+2026-03-15 19:15:09,924 - WARNING - Retrying (Retry(total=232, connect=240, read=232, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:17:29,479 - WARNING - Retrying (Retry(total=231, connect=240, read=231, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:26:23,074 - WARNING - Retrying (Retry(total=230, connect=240, read=230, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:26:23,100 - WARNING - Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ConnectionAbortedError(10053, 'Программа на вашем хост-компьютере разорвала установленное подключение', None, 10053, None)': /v2.23/tasks.get_all
+2026-03-15 19:28:42,734 - WARNING - Retrying (Retry(total=229, connect=240, read=229, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:31:02,248 - WARNING - Retrying (Retry(total=228, connect=240, read=228, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:33:21,740 - WARNING - Retrying (Retry(total=227, connect=240, read=227, redirect=240, status=240)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v2.23/events.add_batch
+2026-03-15 19:35:42,084 - INFO - Запуск предсказания для: data/test.csv
+2026-03-15 19:35:42,098 - ERROR - Ошибка при предсказании: catboost/libs/model/model_import_interface.h:19: Model file doesn't exist: ./model/best_model.cbm
+2026-03-15 19:37:53,856 - INFO - Загрузка данных для обучения: data/train.csv
+2026-03-15 19:37:53,966 - INFO - Запуск Optuna для подбора параметров...
+2026-03-15 19:48:06,118 - INFO - Лучшие параметры: {'iterations': 627, 'depth': 5, 'learning_rate': 0.09473060621310164, 'l2_leaf_reg': 6.93533757631234}
+2026-03-15 20:19:00,300 - INFO - Загрузка данных для обучения: data/train.csv
+2026-03-15 20:19:00,414 - INFO - Запуск Optuna...
+2026-03-15 20:29:23,698 - INFO - Лучшие параметры: {'iterations': 976, 'depth': 5, 'learning_rate': 0.09886135627532336, 'l2_leaf_reg': 9.904067040866542}
+2026-03-15 20:30:27,045 - INFO - Модель и признаки сохранены.
+2026-03-15 20:46:09,392 - INFO - Запуск предсказания для: data/test.csv
+2026-03-15 20:46:09,689 - INFO - Предсказания сохранены в ./data/results.csv
